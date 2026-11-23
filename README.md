@@ -95,15 +95,30 @@ Two more columns are derived for database tables: `lookup_values` and
 
 ## Syncing a database table
 
-Define a store for the table, naming your repo and your existing Ecto schema:
+Turn your countries context into a store, naming your repo and your Ecto schema:
 
 ```elixir
-defmodule MyApp.Countries.Countries do
+# lib/my_app/countries.ex
+defmodule MyApp.Countries do
   use Countries.Store,
     repo: MyApp.Repo,
     schema: MyApp.Countries.Country
+
+  # Your existing context functions stay as they are.
 end
 ```
+
+```
+lib/my_app/
+├── countries.ex        # the context and store
+└── countries/
+    └── country.ex      # the schema
+```
+
+The store adds the functions listed below. If your context already defines one of
+them, define yours after `use Countries.Store` and yours takes precedence. To keep the
+library's functions apart from your own, put them in a separate module, such as
+`MyApp.Countries.Store`.
 
 | Option    | Description | Default |
 | --------- | ----------- | ------- |
@@ -125,7 +140,9 @@ The store module gets:
 | `diff/1`    | What a sync would change, without writing anything. |
 | `sync/1`    | Writes the changes, all or nothing. |
 
-An application with several databases defines one store per database.
+A store is tied to one repo, so an application with several databases defines one store
+per database. For example, `MyApp.Countries` for the server repo and
+`MyApp.Countries.Local` for an on-device SQLite repo, both using the same schema.
 
 ### Adding the library to an existing table
 
@@ -135,7 +152,7 @@ so an application can depend on the library without its data being touched.
 1. **Preview the changes.**
 
    ```elixir
-   iex> plan = MyApp.Countries.Store.diff()
+   iex> plan = MyApp.Countries.diff()
    iex> plan.insert   # rows the table lacks
    iex> plan.update   # [%{key: "TZA", changes: %{name: {"Tanzania", "United Republic of Tanzania"}}}]
    iex> plan.unknown  # keys only the table has; they are never deleted
@@ -147,11 +164,11 @@ so an application can depend on the library without its data being touched.
 3. **Sync.**
 
    ```elixir
-   MyApp.Countries.Store.sync()
+   MyApp.Countries.sync()
    #=> {:ok, %{inserted: 2, updated: 57}}
 
-   MyApp.Countries.Store.sync(mode: :insert)    # add missing rows only
-   MyApp.Countries.Store.sync(except: [:name])  # override options for one call
+   MyApp.Countries.sync(mode: :insert)    # add missing rows only
+   MyApp.Countries.sync(except: [:name])  # override options for one call
    ```
 
 A sync updates only the rows that changed, so `updated_at` keeps its meaning. Call
