@@ -2,16 +2,38 @@
 
 Country reference data for Elixir applications, kept in one place.
 
-The dataset ships inside the library. Applications read it directly, or sync it into
-their own database table. When a country changes, the change is made once here and
-released. Every application picks it up by upgrading the dependency.
+The dataset ships inside the library. When a country changes, the change is made once
+here and released, and every application picks it up by upgrading the dependency.
 
-- **No setup for reads.** The dataset is compiled in, so lookups need no database or
-  process.
+## With or without a database
+
+**With a database: the usual case.** If other tables in your application reference
+countries, the countries must live in your database too. Foreign keys such as
+`nationality_id` need a row to point at, and joins and reports need a table to join
+on. Keeping those rows in the database is what preserves data integrity.
+`Countries.Store` keeps that table in step with the dataset. It writes only the columns
+your schema shares with the dataset, previews every change first, and never deletes a
+row.
+
+**Without a database.** If you only need to look countries up, for example to fill a
+dropdown, show a flag or check a dial code, call `Countries.get/1` and the other
+functions directly. The country list is built into the library when it compiles, so
+there is no table to create, no process to start and no file read at runtime.
+
+| You need | Use | Migration |
+| -------- | --- | --------- |
+| Tables that reference countries, with an existing countries table | `Countries.Store` | none |
+| Tables that reference countries, with no countries table yet | `Countries.Migration`, `Countries.Schema`, `Countries.Store` | once |
+| Lookups only | `Countries` | none |
+
+Both ways share the same free-text lookup and the same data, so they never disagree.
+
+## Features
+
 - **Free-text lookup.** Codes, names, former names, nationalities and passport-scanner
   spellings resolve to a country, ignoring case, accents and punctuation.
-- **Safe for existing tables.** A sync writes only the columns the application's
-  schema shares with the dataset, previews changes first, and never deletes a row.
+- **Safe for existing tables.** Your primary keys, foreign keys and own columns are
+  never touched, and nothing is written until you call `sync/0`.
 - **Any database.** PostgreSQL, SQLite and MySQL are built in, and other databases,
   SQL or not, plug in through an adapter.
 - **Flexible primary keys.** New tables use UUIDs by default, or auto-incremented
